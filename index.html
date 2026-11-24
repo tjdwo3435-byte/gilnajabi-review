@@ -321,7 +321,7 @@ function renderBar(){
 function ctaLabel(id){
   if(id==='intro')return '시작하기';
   if(id==='review')return '다 적었어요';
-  if(id==='send')return !ENDPOINT?'전체 복사':S.sent?'전달 완료':'보내기';
+  if(id==='send')return S.sent?'전달 완료':'보내기';
   return '다음';
 }
 function go(id,{anim=true}={}){
@@ -333,12 +333,14 @@ function go(id,{anim=true}={}){
   if(sec==='dyn')renderDyn(id);
   if(id==='send'){$('#outText').value=buildText();$('#copyStatus').textContent='';renderSend();}
   $('#cta').textContent=ctaLabel(id);
-  $('#ctaBar').hidden=id==='send'&&!!ENDPOINT&&S.sent;
+  $('#ctaBar').hidden=id==='send'&&S.sent;
   renderBar();window.scrollTo(0,0);
 }
 function next(){const i=SCREENS.indexOf(S.scr);go(SCREENS[Math.min(i+1,SCREENS.length-1)]);}
 function prev(){const i=SCREENS.indexOf(S.scr);go(SCREENS[Math.max(i-1,0)]);}
-$('#cta').addEventListener('click',()=>{if(S.scr==='send'){if(ENDPOINT)submitAll();else copyAll();return;}next();});
+$('#cta').addEventListener('click',()=>{if(S.scr==='send'){submitAll();return;}next();});
+// 미리보기(주소 없음)에서는 실제 전송 없이 같은 흐름만 보여줌
+const PREVIEW=!ENDPOINT;
 $('#backBtn').addEventListener('click',prev);
 document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;setP(S,k,e.target.value);save();});
 
@@ -396,13 +398,13 @@ function copyAll(){
 }
 $('#copyBtn').addEventListener('click',copyAll);
 function renderSend(){
-  const manual=!ENDPOINT;
-  $('#sendForm').hidden=!!(ENDPOINT&&S.sent);$('#sentDone').hidden=!(ENDPOINT&&S.sent);$('#manualBox').hidden=!manual;
-  if(manual)$('#sendDesc').textContent="'전체 복사'를 눌러 카톡으로 보내주세요.";
+  $('#sendForm').hidden=!!S.sent;$('#sentDone').hidden=!S.sent;$('#manualBox').hidden=true;
   $('#f-name').value=S.name||'';
   $('#applyBtn').hidden=!!S.applied;$('#applyDone').hidden=!S.applied;
+  $('#copyStatus').textContent=PREVIEW&&S.sent?'미리보기 화면이라 실제로 전달되지는 않았어요.':'';
 }
 async function post(payload){
+  if(PREVIEW){await new Promise(r=>setTimeout(r,500));return {ok:true,preview:true};}
   const res=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
   const out=await res.json().catch(()=>({ok:res.ok}));if(!out.ok)throw new Error(out.error||'failed');return out;
 }
